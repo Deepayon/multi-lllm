@@ -1,24 +1,30 @@
+# llm_sdk/models/gemini.py
+
 import google.generativeai as genai
-from app.core.llms.shared_prompt import build_prompt
+from llm_sdk.shared_prompt import build_prompt
 
-def generate(access_counts: dict, api_key: str) -> str:
-    if not access_counts:
-        return "No access data provided."
 
-    if not api_key:  # No fallback to env
-        raise ValueError("Gemini API error: API key is required but missing.")
+class GeminiLLM:
+    def __init__(self, model: str = "models/gemini-2.0-flash"):
+        self.model = model
 
-    try:
-        genai.configure(api_key=api_key)
+    def generate(self, access_counts: dict, api_key: str) -> str:
+        if not access_counts:
+            return "No access data provided."
 
-        prompt = build_prompt(access_counts)
-        model = genai.GenerativeModel("models/gemini-2.0-flash")
-        response = model.generate_content(prompt)
+        if not api_key:
+            return "Gemini API error: API key is required but missing."
 
-        if not response or not hasattr(response, "text"):
-            raise ValueError("Gemini API returned an invalid response.")
+        try:
+            genai.configure(api_key=api_key)
+            prompt = build_prompt(access_counts)
+            model = genai.GenerativeModel(self.model)
+            response = model.generate_content(prompt)
 
-        return response.text.strip()
+            if not response or not hasattr(response, "text"):
+                return "Gemini API returned an invalid response."
 
-    except Exception as e:
-        raise ValueError(f"Gemini API error: {e}")
+            return response.text.strip()
+
+        except Exception as e:
+            return f"Gemini API error: {e}"

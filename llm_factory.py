@@ -1,66 +1,65 @@
+# llm_sdk/llm_factory.py
+
+import os
 import json
 import re
-import os
-from app.core.llms import gemini, gpt, claude, llama, deepseek
+from llm_sdk.models import gemini, gpt, claude, llama, deepseek
 
+# Map string identifiers to LLM classes
 LLM_DISPATCH = {
-    "gemini": gemini.generate,
-    "gpt": gpt.generate,
-    "openai": gpt.generate,
-    "openrouter": gpt.generate,
-    "claude": claude.generate,
-    "ollama": llama.generate,
-    "llama": llama.generate,
-    "deepseek": deepseek.generate
+    "gemini": gemini.GeminiLLM,
+    "gpt": gpt.GPTLLM,
+    "openai": gpt.GPTLLM,
+    "openrouter": gpt.GPTLLM,
+    "claude": claude.ClaudeLLM,
+    "llama": llama.LLaMALLM,
+    "ollama": llama.LLaMALLM,
+    "deepseek": deepseek.DeepSeekLLM
 }
 
-def generate_tiering_suggestions(llm_type: str, access_counts: dict, api_key: str = None) -> dict:
-    llm_type = llm_type.lower()
 
+def generate_response(
+    llm_type: str,
+    data: dict,
+    api_key: str = None,
+    model: str = None,
+    return_raw: bool = False
+) -> str | dict:
+    """
+    Generic entrypoint to generate output from any LLM backend.
+
+    Args:
+        llm_type (str): One of ["gemini", "gpt", "claude", "llama", "deepseek", etc.]
+        data (dict): Input dict to be formatted into a prompt by shared_prompt
+        api_key (str): API key to use
+        model (str): Optional model version
+        return_raw (bool): If True, returns raw string output. Else parses JSON if possible.
+
+    Returns:
+        str or dict: LLM response (raw or parsed)
+    """
+
+    llm_type = llm_type.lower()
     if llm_type not in LLM_DISPATCH:
         raise ValueError(f"Unsupported LLM type: {llm_type}")
 
     try:
-        # Get raw LLM response
-        raw_output = LLM_DISPATCH[llm_type](access_counts, api_key)
+        llm_class = LLM_DISPATCH[llm_type]
+        llm_instance = llm_class(model=model) if model else llm_class()
 
-        # Clean markdown/code blocks like ```json ... ```
-        cleaned_output = re.sub(r"```(?:json)?\n?(.*?)```", r"\1", raw_output, flags=re.DOTALL).strip()
+        output = llm_instance.generate(data, api_key)
 
-        # Parse the cleaned LLM JSON
-        parsed = json.loads(cleaned_output)
+        if return_raw:
+            return output
 
-        summary = {"total_files": 0, "hot_tier": 0, "warm_tier": 0, "cold_tier": 0}
-        analysis = []
+        # Clean markdown-style ```json blocks
+        cleaned = re.sub(r"```(?:json)?\s*([\s\S]*?)\s*```", r"\1", output).strip()
 
-        # Normalize access_counts keys
-        normalized_counts = {os.path.normpath(k): v for k, v in access_counts.items()}
-
-        for path, tier in parsed.items():
-            tier_upper = tier.strip().upper()
-            summary["total_files"] += 1
-
-            if tier_upper == "HOT":
-                summary["hot_tier"] += 1
-            elif tier_upper == "WARM":
-                summary["warm_tier"] += 1
-            elif tier_upper == "COLD":
-                summary["cold_tier"] += 1
-
-            normalized_path = os.path.normpath(path if path.startswith("/") else "/" + path)
-            frequency = normalized_counts.get(normalized_path, "unknown")
-
-            analysis.append({
-                "path": path,
-                "tier": tier_upper,
-                "score": 0.0,
-                "access_frequency": frequency
-            })
-
-        return {
-            "summary": summary,
-            "analysis": analysis
-        }
+        # Try parsing as JSON
+        try:
+            return json.loads(cleaned)
+        except json.JSONDecodeError:
+            raise ValueError("LLM response is not valid JSON.")
 
     except Exception as e:
-        raise ValueError(f"LLM did not return valid JSON: {e}")
+        raise RuntimeError(f"LLM processing failed: {e}")
