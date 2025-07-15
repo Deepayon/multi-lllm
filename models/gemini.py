@@ -1,7 +1,5 @@
-# llm_sdk/models/gemini.py
-
 import google.generativeai as genai
-from llm_sdk.shared_prompt import build_prompt
+from shared_prompt import build_prompt
 
 
 class GeminiLLM:

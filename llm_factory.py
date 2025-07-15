@@ -1,9 +1,7 @@
-# llm_sdk/llm_factory.py
-
 import os
 import json
 import re
-from llm_sdk.models import gemini, gpt, claude, llama, deepseek
+from models import gemini, gpt, claude, llama, deepseek
 
 # Map string identifiers to LLM classes
 LLM_DISPATCH = {

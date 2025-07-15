@@ -2,7 +2,7 @@ import os
 import json
 import re
 import openai
-from llm_sdk.shared_prompt import build_prompt
+from shared_prompt import build_prompt
 
 
 class GPTLLM:

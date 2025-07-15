@@ -1,10 +1,8 @@
-# llm_sdk/models/claude.py
-
 import os
 import json
 import re
 import requests
-from multi_lllm.shared_prompt import build_prompt
+from shared_prompt import build_prompt
 
 
 class ClaudeLLM:

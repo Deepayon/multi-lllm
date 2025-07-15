@@ -1,10 +1,8 @@
-# llm_sdk/models/deepseek.py
-
 import os
 import json
 import re
 import requests
-from llm_sdk.shared_prompt import build_prompt
+from shared_prompt import build_prompt
 
 
 class DeepSeekLLM:
